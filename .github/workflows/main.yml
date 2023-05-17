@@ -1,1 +1,78 @@
 
+name: Build
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        default: 'v0.0.1'
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [
+          { target: "x86_64-unknown-linux-musl", image_tag: "x86_64-musl", wheel: true },
+        ]
+    container:
+      image: docker://messense/rust-musl-cross:${{ matrix.platform.image_tag }}
+      env:
+        CFLAGS_armv7_unknown_linux_musleabihf: '-mfpu=vfpv3-d16'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get Download Url
+        id: getref
+        run: |
+          echo "${{ github.ref }}"
+      - name: Build wheels - manylinux
+        uses: messense/maturin-action@main
+        with:
+          target: ${{ matrix.platform.target }}
+          manylinux: auto
+          container: off
+          args: --release -o dist --strip --no-default-features --features native-tls-vendored
+      - name: Build wheels - musllinux
+        if: matrix.platform.wheel
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          manylinux: musllinux_1_1
+          container: off
+          args: --release --out dist  --strip --no-default-features --features native-tls-vendored
+      - name: Upload wheels
+        if: matrix.platform.wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+          if-no-files-found: error
+      - name: Upx compress binary
+        uses: crazy-max/ghaction-upx@v1
+        with:
+          version: latest
+          files: target/${{ matrix.platform.target }}/release/tmp-link-webdav
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.platform.target }}-bin
+          path: target/${{ matrix.platform.target }}/release/tmp-link-webdav
+          if-no-files-found: error
+      - name: Archive binary
+        run: |
+          cd target/${{ matrix.platform.target }}/release
+          tar czvf tmp-link-webdav-${{ github.event.inputs.tag }}.${{ matrix.platform.target }}.tar.gz tmp-link-webdav
+          shasum -a 256 tmp-link-webdav-${{ github.event.inputs.tag }}.${{ matrix.platform.target }}.tar.gz > tmp-link-webdav-${{ github.event.inputs.tag }}.${{ matrix.platform.target }}.tar.gz.sha256
+          cd -
+      - name: Upload binary to GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ matrix.platform.target }}/release/tmp-link-webdav*.tar.gz*
+          file_glob: true
+          overwrite: true
+          tag: 'refs/tags/${{ github.event.inputs.tag }}'
+  
