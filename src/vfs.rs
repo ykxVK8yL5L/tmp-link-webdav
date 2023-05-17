@@ -598,9 +598,9 @@ impl WebdavDriveFileSystem {
             .form(&params)
             .send()
             .await?;
-        let body = response.text().await.unwrap();
-        debug!(body = body);
-        let prepareInfo:PrepareFileResponse = serde_json::from_str(&body).unwrap();
+        let pbody = response.text().await.unwrap();
+        debug!(body = pbody);
+        let prepareInfo:PrepareFileResponse = serde_json::from_str(&pbody).unwrap();
 
 
         // let prepareInfo:PrepareFileResponse = match  self.post_request(uploader_url.clone(),&params).await{
@@ -637,13 +637,13 @@ impl WebdavDriveFileSystem {
 
 
         let upload_type = format!("multipart/form-data");
-        let upload_length = format!("{}",&body.len());
+        let upload_length = format!("{}",&file.fsize);
         let mut upload_headers = reqwest::header::HeaderMap::new();
         upload_headers.insert("authority", oss_args.uploader.parse()?);
-        upload_headers.insert("accept", "application/json, text/javascript, */*; q=0.01".parse()?);
+        // upload_headers.insert("accept", "application/json, text/javascript, */*; q=0.01".parse()?);
         upload_headers.insert("accept-language", "zh-CN,zh;q=0.9,en;q=0.8".parse()?);
-        upload_headers.insert("content-type", upload_type.parse()?);
-        upload_headers.insert("content-length", upload_length.parse()?);
+        // upload_headers.insert("content-type", upload_type.parse()?);
+        // upload_headers.insert("content-length", upload_length.parse()?);
         upload_headers.insert("origin", "https://tmp.link".parse()?);
         upload_headers.insert("referer", "https://tmp.link/".parse()?);
         upload_headers.insert("sec-ch-ua", "\"Google Chrome\";v=\"113\", \"Chromium\";v=\"113\", \"Not-A.Brand\";v=\"24\"".parse()?);
@@ -654,14 +654,13 @@ impl WebdavDriveFileSystem {
         upload_headers.insert("sec-fetch-site", "cross-site".parse()?);
         upload_headers.insert("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36".parse()?);
         let upload_client = reqwest::Client::builder()
-        .default_headers(upload_headers)
         .pool_idle_timeout(Duration::from_secs(50))
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))
         .build()?;
 
 
-        let formfiledata: Part = Part::stream(body).file_name("slice");
+        let formfiledata: Part = Part::bytes(body.to_vec()).file_name("slice");
         let form = reqwest::multipart::Form::new()
             .text("sha1", file_sha1)
             .text("index", upload_index_str)
@@ -702,48 +701,6 @@ impl WebdavDriveFileSystem {
 
 
     pub async fn complete_upload(&self,file:&WebdavFile, upload_tags:String, oss_args:&OssArgs, upload_id:&str)-> Result<()> {
-        // info!(file = %file.name, "complete_upload");
-        // let url = format!("https://{}/{}?uploadId={}",oss_args.endpoint,oss_args.key,upload_id);
-        // let now = SystemTime::now();
-        // let gmt = httpdate::fmt_http_date(now);
-        // let mut req = self.client.post(url)
-        //     .body(upload_tags)
-        //     .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-        //     .header("X-Oss-Security-Token", &oss_args.security_token)
-        //     .header("Date", &gmt).build()?;
-        // let oss_sign:String = self.hmac_authorization(&req,&gmt,oss_args);
-        // let oss_header = format!("OSS {}:{}",&oss_args.access_key_id,&oss_sign);
-        // let header_auth = HeaderValue::from_str(&oss_header).unwrap();
-        // req.headers_mut().insert(reqwest::header::AUTHORIZATION, header_auth);
-        // let res = self.client.execute(req).await?;
-        // let mut params = HashMap::new();
-        // params.insert("action", "total");
-        // params.insert("token", &self.credentials.token);
-
-        // let url = format!("{}/app/upload_slice",oss_args.uploader);
-        // let completeInfo:CompleteFileUpload = match  self.post_request(url.clone(),&params).await{
-        //     Ok(res)=>res.unwrap(),
-        //     Err(err)=>{
-        //         panic!("准备上传文件失败文件可能已经存在: {:?}", err)
-        //         //return Err(err);
-        //     }
-        // };
-        // debug!("输出获取到的最终信息开始");
-        // println!("{:?}",completeInfo);
-        // debug!("输出获取到的最终信息结束");
-
-
-        // let mut params = HashMap::new();
-        // params.insert("action", "challenge");
-        // params.insert("token", &self.credentials.token);
-
-        // let res:FileResponse = match  self.post_request(TMPTOKENURL.to_string(),&params).await{
-        //     Ok(res)=>res.unwrap(),
-        //     Err(err)=>{
-        //         panic!("下载Token获取失败: {:?}", err)
-        //         //return Err(err);
-        //     }
-        // };
         let uploader_url = format!("{}/app/upload_slice",oss_args.uploader);
         let slice_size = format!("{}",&self.upload_buffer_size);
         let mut headers = reqwest::header::HeaderMap::new();
@@ -1364,8 +1321,6 @@ impl AliyunDavFile {
             println!("文件上传结果:{:?}",part);
             debug!(chunk_count = %self.upload_state.chunk_count, current_chunk=current_chunk, "upload chunk info");
             self.upload_state.upload_tags.Part.push(part);
-
-        
             if current_chunk == self.upload_state.chunk_count{
                 debug!(file_name = %self.file.fname, "upload finished");
                 let mut buffer = Vec::new();

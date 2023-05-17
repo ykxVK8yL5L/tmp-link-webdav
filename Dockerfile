@@ -7,9 +7,9 @@ RUN apk add tzdata && \
 	echo "Asia/Shanghai" > /etc/timezone && \
 	apk del tzdata
 
-RUN mkdir -p /etc/pikpak-webdav
+RUN mkdir -p /etc/tmp-link-webdav
 WORKDIR /root/
-ADD pikpak-webdav-$TARGETARCH$TARGETVARIANT /usr/bin/pikpak-webdav
+ADD tmp-link-webdav-$TARGETARCH$TARGETVARIANT /usr/bin/tmp-link-webdav
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/usr/bin/pikpak-webdav", "--host", "0.0.0.0", "--workdir", "/etc/pikpak-webdav"]
+CMD ["/usr/bin/tmp-link-webdav", "--workdir", "/etc/tmp-link-webdav"]
