@@ -7,5 +7,10 @@ tmp-link-webdav --tmp-link-token='XXXXXXXXXXXXX'
 ```
 2、Dokcer【推荐使用】
 ```
-目前还没完成稍后完善
+docker run  --name="tmp-link-webdav" -p 10018:9867 -e TMP_LINK_TOKEN="XXXXXXXXXXXXX" ykxvk8yl5l/tmp-link-webdav:latest
+```
+
+文件上传命令:
+```
+curl -T "文件路径" "http://IP:PORT/" 
 ```
