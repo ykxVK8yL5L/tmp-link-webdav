@@ -52,6 +52,10 @@ struct Opt {
     /// Working directory, refresh_token will be stored in there if specified
     #[structopt(short = "w", long)]
     workdir: Option<PathBuf>,
+        
+    /// Prefix to be stripped off when handling request.
+    #[structopt(long, env = "WEBDAV_STRIP_PREFIX")]
+    strip_prefix: Option<String>,
 
 }
 
@@ -88,14 +92,18 @@ async fn main() -> anyhow::Result<()> {
             )
         })?;
     info!("WebdavDriveFileSystem file system initialized");
-    let dav_server = DavHandler::builder()
+    let mut dav_server_builder = DavHandler::builder()
         .filesystem(Box::new(fs))
         .locksystem(MemLs::new())
         .read_buf_size(opt.read_buffer_size)
         .autoindex(true)
-        .build_handler();
+        .redirect(true);
+    if let Some(prefix) = opt.strip_prefix {
+        dav_server_builder = dav_server_builder.strip_prefix(prefix);
+    }
 
- 
+    let dav_server = dav_server_builder.build_handler();
+
     debug!(
         read_buffer_size = opt.read_buffer_size,
         auto_index = true,
