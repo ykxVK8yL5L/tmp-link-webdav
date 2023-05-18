@@ -384,7 +384,7 @@ impl WebdavFile {
     pub fn new_root() -> Self {
         Self {
             mrid: "0".to_string(),
-            model: "1".to_string(),
+            model: "2".to_string(),
             ukey: "".to_string(),
             sha1: "".to_string(),
             fname: "".to_string(),
