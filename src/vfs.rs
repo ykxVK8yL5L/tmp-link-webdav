@@ -473,7 +473,7 @@ impl WebdavDriveFileSystem {
         params.insert("sha1", hash);
         params.insert("filename", &name);
         params.insert("filesize", &sizeStr);
-        params.insert("model", "1");
+        params.insert("model", "2");
         params.insert("mr_id", "0");
         params.insert("skip_upload", "0");
         params.insert("action", "prepare_v4");
@@ -591,7 +591,7 @@ impl WebdavDriveFileSystem {
         params.insert("filesize", &file.fsize);
         params.insert("slice_size", &slice_size);
         params.insert("mr_id", "0");
-        params.insert("model", "1");
+        params.insert("model", "2");
 
         let response = client
             .post(uploader_url.clone())
@@ -733,7 +733,7 @@ impl WebdavDriveFileSystem {
         params.insert("filesize", &file.fsize);
         params.insert("slice_size", &slice_size);
         params.insert("mr_id", "0");
-        params.insert("model", "1");
+        params.insert("model", "2");
 
         let response = client
             .post(uploader_url.clone())
@@ -833,7 +833,7 @@ impl DavFileSystem for WebdavDriveFileSystem {
 
                 let file = WebdavFile {
                     mrid: "0".to_string(),
-                    model: "1".to_string(),
+                    model: "2".to_string(),
                     ukey: "".to_string(),
                     sha1: file_hash,
                     fname: name,
@@ -1482,7 +1482,6 @@ fn is_url_expired(url: &str) -> bool {
     }
     false
 }
-
 
 
 
