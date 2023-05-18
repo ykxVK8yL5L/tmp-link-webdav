@@ -12,4 +12,4 @@ WORKDIR /root/
 ADD tmp-link-webdav-$TARGETARCH$TARGETVARIANT /usr/bin/tmp-link-webdav
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/usr/bin/tmp-link-webdav", "--auto-index", "--workdir", "/etc/tmp-link-webdav"]
+CMD ["/usr/bin/tmp-link-webdav", "--workdir", "/etc/tmp-link-webdav"]
