@@ -9,7 +9,7 @@ Docker主页: https://hub.docker.com/r/ykxvk8yl5l/tmp-link-webdav
 ```
 tmp-link-webdav --tmp-link-token='XXXXXXXXXXXXX' --auth-user='admin' --auth-password='admin' 
 ```
-2、Dokcer【推荐使用】
+2、Dokcer【推荐使用，如不使用alist-encrypt可不设置用户名和密码】
 ```
 docker run  --name="tmp-link-webdav" -p 10018:9867 -e TMP_LINK_TOKEN="XXXXXXXXXXXXX" -e WEBDAV_AUTH_USER=admin -e WEBDAV_AUTH_PASSWORD=admin ykxvk8yl5l/tmp-link-webdav:latest
 ```
