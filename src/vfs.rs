@@ -519,9 +519,7 @@ impl WebdavDriveFileSystem {
         debug!("输出创建文件信息开始");
         println!("{:?}",fileUploadRes);
         debug!("输出创建文件信息结束");
-
-
-
+        
         Ok(fileUploadRes)
 
     }
@@ -529,26 +527,6 @@ impl WebdavDriveFileSystem {
 
     pub async fn get_pre_upload_info(&self,oss_args:&OssArgs) -> Result<String> {
         Ok(oss_args.utoken.clone())
-        // let mut url = format!("https://{}/{}?uploads",oss_args.endpoint,oss_args.key);
-        // if self.proxy_url.len()>4{
-        //     url = format!("{}/https://{}/{}?uploads",&self.proxy_url,oss_args.endpoint,oss_args.key);
-        // }
-        // let now = SystemTime::now();
-        // let gmt = httpdate::fmt_http_date(now);
-        // let mut req = self.client.post(url)
-        //     .header(reqwest::header::USER_AGENT, "aliyun-sdk-android/2.9.5(Linux/Android 11/ONEPLUS%20A6000;RKQ1.201217.002)")
-        //     .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-        //     .header("X-Oss-Security-Token", &oss_args.security_token)
-        //     .header("Date", &gmt).build()?;
-        // let oss_sign:String = self.hmac_authorization(&req,&gmt,oss_args);
-        // let oss_header = format!("OSS {}:{}",&oss_args.access_key_id,&oss_sign);
-        // let header_auth = HeaderValue::from_str(&oss_header).unwrap();
-        // req.headers_mut().insert(reqwest::header::AUTHORIZATION, header_auth);
-        // let res = self.client.execute(req).await?;
-        // let body = &res.text().await?;
-
-        // let result: InitiateMultipartUploadResult = from_str(body).unwrap();
-        // Ok(result.UploadId.clone())
     }
 
     pub async fn upload_chunk(&self, file:&WebdavFile, oss_args:&OssArgs, upload_id:&str, current_chunk:u64,body: Bytes) -> Result<(PartInfo)> {
@@ -602,20 +580,6 @@ impl WebdavDriveFileSystem {
         debug!(body = pbody);
         let prepareInfo:PrepareFileResponse = serde_json::from_str(&pbody).unwrap();
 
-
-        // let prepareInfo:PrepareFileResponse = match  self.post_request(uploader_url.clone(),&params).await{
-        //     Ok(res)=>res.unwrap(),
-        //     Err(err)=>{
-        //         panic!("准备上传文件失败: {:?}", err)
-        //         //return Err(err);
-        //     }
-        // };
-        // debug!("输出获取到的准备信息开始");
-        // println!("{:?}",prepareInfo);
-        // debug!("输出获取到的准备信息结束");
-
-
-        
         debug!(uploadurl=&uploader_url,"分片上传网址:");
         let mut params = HashMap::new();
         params.insert("action", "challenge");
@@ -636,23 +600,6 @@ impl WebdavDriveFileSystem {
         let file_sha1 = upload_file.sha1;
 
 
-        let upload_type = format!("multipart/form-data");
-        let upload_length = format!("{}",&file.fsize);
-        let mut upload_headers = reqwest::header::HeaderMap::new();
-        upload_headers.insert("authority", oss_args.uploader.parse()?);
-        // upload_headers.insert("accept", "application/json, text/javascript, */*; q=0.01".parse()?);
-        upload_headers.insert("accept-language", "zh-CN,zh;q=0.9,en;q=0.8".parse()?);
-        // upload_headers.insert("content-type", upload_type.parse()?);
-        // upload_headers.insert("content-length", upload_length.parse()?);
-        upload_headers.insert("origin", "https://tmp.link".parse()?);
-        upload_headers.insert("referer", "https://tmp.link/".parse()?);
-        upload_headers.insert("sec-ch-ua", "\"Google Chrome\";v=\"113\", \"Chromium\";v=\"113\", \"Not-A.Brand\";v=\"24\"".parse()?);
-        upload_headers.insert("sec-ch-ua-mobile", "?0".parse()?);
-        upload_headers.insert("sec-ch-ua-platform", "\"macOS\"".parse()?);
-        upload_headers.insert("sec-fetch-dest", "empty".parse()?);
-        upload_headers.insert("sec-fetch-mode", "cors".parse()?);
-        upload_headers.insert("sec-fetch-site", "cross-site".parse()?);
-        upload_headers.insert("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36".parse()?);
         let upload_client = reqwest::Client::builder()
         .pool_idle_timeout(Duration::from_secs(50))
         .connect_timeout(Duration::from_secs(10))
@@ -686,16 +633,6 @@ impl WebdavDriveFileSystem {
             }
         };
 
-
-
-        debug!("输出获取到的准备信息开始");
-        println!("{:?}",parininfo);
-        debug!("输出获取到的准备信息结束");
-
-
-
-
-        
         Ok(parininfo)
     }
 
@@ -745,7 +682,6 @@ impl WebdavDriveFileSystem {
         let completeInfo:CompleteUploadResponse = serde_json::from_str(&body).unwrap();
 
         debug!("输出获取到的最终上传完成信息开始");
-        println!("{:?}",completeInfo);
         println!("上传后的文件地址为:https://tmp.link/f/{}",completeInfo.data);
         debug!("输出获取到的最终上传完成信息结束");
 
@@ -1337,10 +1273,6 @@ impl AliyunDavFile {
             }
             self.upload_state.chunk += 1;
         }
-
-
-        
-
         Ok(())
     }
 
@@ -1408,12 +1340,11 @@ impl DavFile for AliyunDavFile {
                 // upload in progress
                 return Err(FsError::NotFound);
             }
-            
+        
             let download_url = self.download_url.take();
             let download_url = if let Some(mut url) = download_url {
-                debug!(url = %url, "判断下载地址是否过期 默认3个小时");
                 if is_url_expired(&url) {
-                    debug!(url = %url, "download url expired");
+                    debug!(url = %url, "下载地址已经过期重新请求");
                     url = self.get_download_url(&self.parent_dir).await?;
                 }
                 url
@@ -1431,7 +1362,6 @@ impl DavFile for AliyunDavFile {
                     FsError::NotFound
                 })?;
             self.current_pos += content.len() as u64;
-            debug!("赋值修改download_url");
             self.download_url = Some(download_url);
             Ok(content)
         }
