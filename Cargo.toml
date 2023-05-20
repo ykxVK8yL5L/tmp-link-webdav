@@ -26,7 +26,8 @@ time = { version = "=0.3", features = ["formatting", "parsing"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "local-time"] }
 url = "=2.2.2"
-dav-server = { version = "0.5.5", default-features = false, features = ["hyper"] }
+dav-server = { git = "https://github.com/ykxVK8yL5L/dav-server-rs", default-features = false, features = ["hyper"] }
+# dav-server = { version = "0.5.5", default-features = false, features = ["hyper"] }
 # webdav-handler = { version = "=0.2.0", default-features = false, features = ["hyper"] }
 sha-1 = { version = "0.9", default-features = false }
 hex-literal = "0.3.4"
