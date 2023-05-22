@@ -204,8 +204,8 @@ impl WebdavDriveFileSystem {
         params.insert("action", "workspace_filelist_page");
         params.insert("page", "0");
         params.insert("token", &self.credentials.token);
-        params.insert("sort_type", "");
-        params.insert("sort_by", "");
+        params.insert("sort_type", "0");
+        params.insert("sort_by", "0");
         params.insert("photo", "0");
         params.insert("search", "");
         let filelis:FilesList = match  self.post_request(TMPFILEURL.to_string(),&params).await{
