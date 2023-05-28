@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::slice::SliceIndex;
 use std::sync::Arc;
 use std::time::{Duration,SystemTime, UNIX_EPOCH};
+use headers::Range;
 use reqwest::multipart::{Form, Part};
 use tokio::time::sleep;
 use url::form_urlencoded;
@@ -200,28 +201,50 @@ impl WebdavDriveFileSystem {
 
     async fn list_files_and_cache( &self, path_str: String, parent_file_id: String)-> Result<Vec<WebdavFile>>{
         info!(path = %path_str, parent_ukey=%parent_file_id,"cache dir");
+        let mut file_list = Vec::new();
         let mut params = HashMap::new();
-        params.insert("action", "workspace_filelist_page");
-        params.insert("page", "0");
+        params.insert("action", "total");
         params.insert("token", &self.credentials.token);
-        params.insert("sort_type", "0");
-        params.insert("sort_by", "0");
-        params.insert("photo", "0");
-        params.insert("search", "");
-        let filelis:FilesList = match  self.post_request(TMPFILEURL.to_string(),&params).await{
+        let fileListResponse:FileListResponse = match  self.post_request(TMPFILEURL.to_string(),&params).await{
             Ok(res)=>res.unwrap(),
             Err(err)=>{
-                error!("文件列表获取错误: {:?}", err);
+                error!("文件信息获取错误: {:?}", err);
                 //return Err(err);
-                FilesList{
-                    data:vec![],
+                FileListResponse{
+                    data:FileTotal { size: "100".to_string(), nums: "50".to_string() },
                     status:0,
                 }
             }
         };
+        let page: u64 = 50;
+        let total_page = fileListResponse.data.nums.parse::<u64>().unwrap()/page;
 
-        self.cache_dir(path_str,filelis.data.clone()).await;
-        Ok(filelis.data)
+        for current_page in 0..total_page{
+            let current_page_string = format!("{}",current_page);
+            let mut file_params: HashMap<&str, &str> = HashMap::new();
+            file_params.insert("token", &self.credentials.token);
+            file_params.remove("action");
+            file_params.insert("action", "workspace_filelist_page");
+            file_params.insert("page", current_page_string.as_str());
+            file_params.insert("sort_type", "0");
+            file_params.insert("sort_by", "0");
+            file_params.insert("photo", "0");
+            file_params.insert("search", "");
+            let filelist:FilesList = match  self.post_request(TMPFILEURL.to_string(),&file_params).await{
+                Ok(res)=>res.unwrap(),
+                Err(err)=>{
+                    error!("文件列表获取错误: {:?}", err);
+                    //return Err(err);
+                    FilesList{
+                        data:vec![],
+                        status:0,
+                    }
+                }
+            };
+            file_list.extend(filelist.data);
+        }
+        self.cache_dir(path_str,file_list.clone()).await;
+        Ok(file_list)
 
     }
 

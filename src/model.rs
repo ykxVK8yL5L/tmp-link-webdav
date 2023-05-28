@@ -174,6 +174,19 @@ pub struct CompleteFileUpload {
 
 
 #[derive(Debug, Clone,Serialize, Deserialize)]
+pub struct FileListResponse {
+    pub data: FileTotal,
+    pub status:u64,
+}
+
+#[derive(Debug, Clone,Serialize, Deserialize)]
+pub struct FileTotal {
+    pub size: String,
+    pub nums: String,
+}
+
+
+#[derive(Debug, Clone,Serialize, Deserialize)]
 pub struct FileUploadInfo {
     pub size: u64,
     pub nums: u64,
