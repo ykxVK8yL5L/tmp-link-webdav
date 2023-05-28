@@ -216,10 +216,11 @@ impl WebdavDriveFileSystem {
                 }
             }
         };
-        let page: u64 = 50;
-        let total_page = fileListResponse.data.nums.parse::<u64>().unwrap()/page;
-
+        let page: f64 = 50 as f64;
+        let total_page = (fileListResponse.data.nums.parse::<f64>().unwrap()/page).ceil() as u64;
+        println!("文件共有{}页",&total_page);
         for current_page in 0..total_page{
+            println!("请求文件列表{}",&current_page);
             let current_page_string = format!("{}",current_page);
             let mut file_params: HashMap<&str, &str> = HashMap::new();
             file_params.insert("token", &self.credentials.token);
