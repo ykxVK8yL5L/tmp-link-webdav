@@ -1,3 +1,4 @@
+# 官方上传接口改版，上传功能可能已经不能用了，目前我改做另一个项目，和这个功能重叠就不再维护了。
 # tmp.link有每日上传容量限制 如果上传失败就是达到限制了 一天之内就不要上传了   
 # 演示视频:[https://youtu.be/rLXMaLq7vrQ](https://youtu.be/_2UPhxu3Nng)   
 [如需使用alist-encrypt需要设置webdav的用户名和密码，详情见命令行]
