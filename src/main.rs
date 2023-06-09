@@ -1,14 +1,27 @@
 use std::convert::Infallible;
 use std::net::ToSocketAddrs;
 use std::{env, io, path::PathBuf};
-
+use std::time::{Duration,SystemTime, UNIX_EPOCH};
+use std::path::Path;
+use std::fs::File;
+use std::io::Write;
 use headers::{authorization::Basic, Authorization, HeaderMapExt};
 use structopt::StructOpt;
 use tracing::{debug, error, info};
 //use webdav_handler::{body::Body, memls::MemLs, fakels::FakeLs, DavConfig, DavHandler};
 use dav_server::{body::Body, memls::MemLs,DavConfig, DavHandler};
 use vfs::WebdavDriveFileSystem;
-use model::Credentials;
+use model::{Credentials,LoginRequest, LoginResponse};
+use reqwest::Client;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+
+
+use config::{Config, ConfigError, File as CFile};
+use reqwest::{
+    header::{HeaderMap, HeaderValue},
+    StatusCode,
+};
 
 mod vfs;
 mod model;
@@ -59,6 +72,15 @@ struct Opt {
 
 }
 
+
+const ORIGIN: &str = "https://tmp.link";
+const REFERER: &str = "https://tmp.link/?tmpui_page=/app&listview=workspace";
+const TMPUPLOADURL:&str = "https://connect.tmp.link/api_v2/cli_uploader";
+const TMPFILEURL:&str    = "https://tmp-api.vx-cdn.com/api_v2/file";
+const TMPTOKENURL:&str  = "https://tmp-api.vx-cdn.com/api_v2/token";
+const UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36";
+
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     #[cfg(feature = "native-tls-vendored")]
@@ -78,8 +100,55 @@ async fn main() -> anyhow::Result<()> {
         anyhow::bail!("auth-user and auth-password should be specified together.");
     }
 
+
+
+
+
+    // 读取配置文件
+    let mut settings = Config::default();
+    let config_path = Path::new("config.yaml");
+    if !config_path.exists() {
+        debug!("没有找到文件开始网络请求并初始化配置");
+        let mut headers = HeaderMap::new();
+        headers.insert("Origin", HeaderValue::from_static(ORIGIN));
+        headers.insert("Referer", HeaderValue::from_static(REFERER));
+        headers.insert("Host", "tmp-api.vx-cdn.com".parse()?);
+        headers.insert("content-type", "application/x-www-form-urlencoded; charset=UTF-8".parse()?);
+        headers.insert("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36".parse()?);
+        headers.insert("Cookie", format!("PHPSESSID={}",opt.tmp_link_token).parse()?);
+
+        let client = reqwest::Client::builder()
+            .user_agent(UA)
+            .default_headers(headers)
+            .pool_idle_timeout(Duration::from_secs(50))
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
+            .build()?;
+        
+        let login_req = LoginRequest{token:opt.tmp_link_token.clone(), action: "get_detail".to_string() };
+        let lgoin_res:LoginResponse = match post_request(&client, "https://tmp-api.vx-cdn.com/api_v2/user".to_string(), &login_req).await {
+            Ok(res)=>res.unwrap(),
+            Err(err)=>{
+                panic!("登陆失败失败，无法获取用户信息: {:?}，请稍后重试", err)
+            }
+        };
+        if lgoin_res.data.uid.is_empty(){
+            panic!("登陆失败失败，无法获取用户信息，请稍后重试")
+        }
+        settings.set_default("token", opt.tmp_link_token).unwrap();
+        settings.set_default("uid", lgoin_res.data.uid).unwrap();
+        let toml = serde_yaml::to_string(&settings.clone().try_into::<serde_yaml::Value>().unwrap()).unwrap();
+        let mut file = File::create("config.yaml").unwrap();
+        file.write_all(toml.as_bytes()).unwrap();
+    } else {
+        settings.merge(CFile::from(config_path)).expect("Failed to read config.");
+    }
+    let token:String = settings.get("token").unwrap();
+    let uid: String = settings.get("uid").unwrap();
+
     let credentials = Credentials{
-        token:opt.tmp_link_token,
+        token:token,
+        uid:uid
     };
 
 
@@ -167,4 +236,36 @@ async fn main() -> anyhow::Result<()> {
         .await
         .map_err(|e| error!("server error: {}", e));
     Ok(())
+}
+
+
+async fn post_request<T, U>(client:&Client,url: String, req: &T) -> anyhow::Result<Option<U>>
+    where
+        T: Serialize + ?Sized,
+        U: DeserializeOwned,
+    {
+        let url = reqwest::Url::parse(&url)?;
+        let res = client
+            .post(url.clone())
+            .form(&req)
+            .send()
+            .await?
+            .error_for_status();
+        match res {
+            Ok(res) => {
+                if res.status() == StatusCode::NO_CONTENT {
+                    return Ok(None);
+                }
+                // let res = res.json::<U>().await?;
+                // Ok(Some(res))
+                let res = res.text().await?;
+                //println!("{}: {}", url, res);
+                let res = serde_json::from_str(&res)?;
+                // let res_obj = res.json::<U>().await?;
+                Ok(Some(res))
+            }
+            Err(err) => {
+                Err(err.into())
+            }
+        }
 }

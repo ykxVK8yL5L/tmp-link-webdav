@@ -28,7 +28,29 @@ use serde_json::Value;
 #[derive(Debug, Clone)]
 pub struct Credentials {
     pub token: String,
+    pub uid: String,
 }
+
+
+#[derive(Debug, Clone,Serialize, Deserialize)]
+pub struct LoginRequest {
+    pub action: String,
+    pub token: String,
+}
+
+#[derive(Debug, Clone,Serialize, Deserialize)]
+pub struct LoginResponse {
+    pub status: u32,
+    pub data:LoginData,
+}
+
+#[derive(Debug, Clone,Serialize, Deserialize)]
+pub struct LoginData {
+    pub uid: String,
+}
+
+
+
 
 
 #[derive(Debug, Clone, Serialize)]
