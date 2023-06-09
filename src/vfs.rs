@@ -637,6 +637,16 @@ impl WebdavDriveFileSystem {
         .build()?;
 
 
+        //需要先option请求下
+
+
+
+        let option_response = upload_client
+            .request(reqwest::Method::OPTIONS, &uploader_url)
+            .send()
+            .await?;
+
+
         let formfiledata: Part = Part::bytes(body.to_vec()).file_name("slice");
         let form = reqwest::multipart::Form::new()
             .text("uptoken", uptoken.clone())
@@ -692,9 +702,18 @@ impl WebdavDriveFileSystem {
         .timeout(Duration::from_secs(30))
         .build()?;
 
+
+        let uptoken_str = format!("{}{}{}",self.credentials.uid,file.fname,file.fsize);
+        let mut hasher = Sha1::default();
+        hasher.update(uptoken_str.as_bytes());
+        let hash_code = hasher.finalize();
+        let uptoken = format!("{:X}",&hash_code);
+
+
         let mut params = HashMap::new();
         params.insert("action", "prepare");
         params.insert("utoken", &oss_args.utoken);
+        params.insert("uptoken", &uptoken);
         params.insert("sha1", &file.sha1);
         params.insert("token", &self.credentials.token);
         params.insert("filename", &file.fname);
